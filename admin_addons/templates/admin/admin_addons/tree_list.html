@@ -1,0 +1,61 @@
+{% extends "admin/change_list.html" %}
+
+{% load i18n admin_urls admin_list %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+        &rsaquo; <a href="{% url 'admin:app_list' app_label=cl.opts.app_label %}">{{ cl.opts.app_config.verbose_name }}</a>
+        {% if parent_node %}
+            &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ cl.opts.verbose_name_plural|capfirst }}</a>
+            {% for node in parent_node.get_ancestors %}
+                &rsaquo; <a href="{% url opts|admin_urlname:'changelist' node.pk %}">{{ node|capfirst }}</a>
+            {% endfor %}
+            &rsaquo; {{ parent_node|capfirst }}
+        {% else %}
+            &rsaquo; {{ cl.opts.verbose_name_plural|capfirst }}
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block object-tools-items %}
+    {% if has_add_permission %}
+        <li>
+            <a href="{% add_preserved_filters add_url is_popup to_field %}" class="addlink">
+                {% blocktrans with cl.opts.verbose_name as name %}Add {{ name }}{% endblocktrans %}
+            </a>
+        </li>
+    {% endif %}
+{% endblock %}
+
+
+{% block result_list %}
+    {% if action_form and actions_on_top and cl.show_admin_actions %}{% admin_actions %}{% endif %}
+    <div class="admin-addons-tree-list-tools">
+        <div class="admin-addons-tree-list-path">
+            <div class="admin-addons-tree-list-path-label"><span>{% trans 'Path:' %}</span></div>
+            {% if parent_node %}
+                <a class="admin-addons-tree-list-path-entry root" href="{% url opts|admin_urlname:'changelist' %}"><span>{% trans 'Root' %}</span></a>
+                {% for node in parent_node.get_ancestors %}
+                    <a class="admin-addons-tree-list-path-entry" href="{% url opts|admin_urlname:'changelist' node.pk %}"><span>{{ node|capfirst }}</span></a>
+                {% endfor %}
+                <div class="admin-addons-tree-list-path-entry"><span>{{ parent_node|capfirst }}</span></div>
+            {% else %}
+                <div class="admin-addons-tree-list-path-entry root"><span>{% trans 'Root' %}</span></div>
+            {% endif %}
+        </div>
+        <div class="admin-addons-tree-list-buttons">
+            {% if parent_node %}
+                {% with ancestor=parent_node.get_parent %}
+                    {% if ancestor %}
+                        <a class="admin-addons-path-entry" href="{% url opts|admin_urlname:'changelist' ancestor.pk %}"><span>{% include 'admin/svg/icon-level-up.svg' %}</span></a>
+                    {% else %}
+                        <a class="admin-addons-path-entry root" href="{% url opts|admin_urlname:'changelist' %}"><span>{% include 'admin/svg/icon-level-up.svg' %}</span></a>
+                    {% endif %}
+                {% endwith %}
+            {% endif %}
+        </div>
+    </div>
+    {% result_list cl %}
+    {% if action_form and actions_on_bottom and cl.show_admin_actions %}{% admin_actions %}{% endif %}
+{% endblock %}

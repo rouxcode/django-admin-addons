@@ -1,0 +1,65 @@
+.admin-addons-tree-list-tools {
+    overflow: auto;
+}
+
+.admin-addons-tree-list-tools:after {
+    content: '';
+    display: block;
+    clear: both;
+}
+
+.admin-addons-tree-list-path {
+    float: left;
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.admin-addons-tree-list-path-label {
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.admin-addons-tree-list-path-label,
+.admin-addons-tree-list-path-entry {
+    display: inline-block;
+    box-sizing: border-box;
+    vertical-align: middle;
+    padding: 5px 0;
+}
+
+.admin-addons-tree-list-path-label span,
+.admin-addons-tree-list-path-entry span {
+    display: inline-block;
+    box-sizing: border-box;
+    vertical-align: middle;
+}
+
+
+.admin-addons-tree-list-path-entry.root span {
+    display: none;
+}
+
+.admin-addons-tree-list-path-entry:after {
+    content: '/';
+    display: inline-block;
+    vertical-align: middle;
+    padding: 0 5px;
+    font-weight: bold;
+}
+
+.admin-addons-tree-list-buttons {
+    float: right;
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.column-edit_node,
+.field-edit_node {
+    width: 60px;
+    text-align: right;
+}
+
+.field-edit_node a {
+    display: inline-block;
+    padding:
+}

@@ -1,19 +1,82 @@
 from __future__ import unicode_literals
 
 from django import forms
+from django.conf import settings
 from django.conf.urls import url
 from django.contrib import admin
 from django.contrib.admin.utils import quote
 from django.contrib.admin.views.main import ChangeList
-from django.http import Http404, HttpResponseRedirect
+from django.forms.models import modelform_factory
+from django.http import (
+    Http404,
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+    HttpResponseNotAllowed,
+    HttpResponseRedirect,
+    JsonResponse
+)
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.html import mark_safe
 from django.utils.translation import ugettext_lazy as _
 
+from treebeard.forms import _get_exclude_for_model
+
 
 class TreeAdminForm(forms.ModelForm):
-    pass
+
+    _position_choices = (
+        ('last-child', _('At the end')),
+        ('first-child', _('At the top')),
+    )
+    tree_position = forms.ChoiceField(
+        choices=_position_choices,
+        initial=_position_choices[0][0],
+        label=_('Position'),
+    )
+    tree_parent_id = forms.TypedChoiceField(
+        required=False,
+        coerce=int,
+        label=_('Parent node'),
+    )
+
+    def __init__(self, *args, **kwargs):
+        choices = self.get_parent_choices()
+        self.declared_fields['tree_parent_id'].choices = choices
+        self.declared_fields['tree_parent_id'].widget = forms.HiddenInput()
+        super(TreeAdminForm, self).__init__(*args, **kwargs)
+
+    def get_parent_choices(self):
+        objects = self._meta.model._default_manager
+        return [
+            [p['pk'], p['pk']]
+            for p in objects.get_queryset().values('pk')
+        ]
+
+    def _clean_cleaned_data(self):
+        """ delete auxilary fields not belonging to node model """
+        parent_id = self.cleaned_data.get('tree_parent_id', 0)
+        try:
+            del self.cleaned_data['tree_parent_id']
+        except KeyError:
+            pass
+        default = self._position_choices[0][0]
+        position = self.cleaned_data.get('tree_position', default)
+        try:
+            del self.cleaned_data['tree_position']
+        except KeyError:
+            pass
+
+        return parent_id, position
+
+    def save(self, commit=True):
+        parend_id, postion = self._clean_cleaned_data()
+        print 'husch'
+
+
+def movenodeform_factory(model, form=TreeAdminForm, exclude=None, **kwargs):
+    tree_exclude = _get_exclude_for_model(model, exclude)
+    return modelform_factory(model, form=form, exclude=tree_exclude, **kwargs)
 
 
 class TreeChangeList(ChangeList):
@@ -50,16 +113,30 @@ class TreeAdmin(admin.ModelAdmin):
 
     class Media:
         css = {
-            'all': [
-                'admin/admin_addons/css/tree.css',
-            ]
+            'all': ['admin/admin_addons/css/tree.css']
         }
+        if 'djangocms_admin_style' in settings.INSTALLED_APPS:
+            css['all'].append('admin/admin_addons/css/tree.cms.css')
         js = [
             'admin/admin_addons/js/changelist.tree.js',
+            'admin/admin_addons/js/sortable.js',
+            'admin/admin_addons/js/sortable.tree.js',
         ]
 
     def get_urls(self):
         urls = [
+
+            # Ajax Views
+            url(
+                r'^update/$',
+                self.admin_site.admin_view(self.update_view),
+                name='{}_{}_update'.format(
+                    self.model._meta.app_label,
+                    self.model._meta.model_name
+                )
+            ),
+
+            # Template Views
             url(
                 r'^(?P<node_id>\d+)/list/$',
                 self.admin_site.admin_view(self.changelist_view),
@@ -88,11 +165,57 @@ class TreeAdmin(admin.ModelAdmin):
         urls += super(TreeAdmin, self).get_urls()
         return urls
 
+    def get_list_display(self, request):
+        list_display = ['col_move_node'] + [
+            d for d in super(TreeAdmin, self).get_list_display(request)
+        ]
+        list_display.append('col_node_children_count')
+        list_display.append('col_edit_node')
+        return list_display
+
+    def get_list_display_links(self, request, list_display):
+        return ['col_edit_node']
+
+    def get_queryset(self, request):
+        """
+        Only display nodes for the current node or with depth = 1 (root)
+        """
+        if self._node:
+            qs = self._node.get_children()
+        else:
+            depth = 1
+            qs = super(TreeAdmin, self).get_queryset(request)
+            qs = qs.filter(depth=depth)
+        for n in qs:
+            print n, n.path
+        return qs
+
     def get_changeform_initial_data(self, request):
         data = super(TreeAdmin, self).get_changeform_initial_data(request)
         if self._node:
-            data['_ref_node_id'] = self._node.id
+            data['tree_parent_id'] = self._node.id
         return data
+
+    def get_node(self, node_id):
+        """
+        Get the current root node
+        """
+        if node_id:
+            qs = self.model._default_manager.get_queryset()
+            try:
+                id = int(node_id)
+            except ValueError:
+                return None
+            try:
+                return qs.get(pk=id)
+            except self.model.DoesNotExist:
+                raise Http404(
+                    '{} with id "{}" does not exist'.format(
+                        self.model._meta.model_name,
+                        id
+                    )
+                )
+        return None
 
     def add_view(self, request, node_id=None, form_url='', extra_context=None):
         self._node = self.get_node(node_id)
@@ -141,7 +264,8 @@ class TreeAdmin(admin.ModelAdmin):
         extra_context = extra_context or {}
         extra_context.update({
             'parent_node': self._node,
-            'add_url': self.get_add_url()
+            'add_url': self.get_add_url(),
+            'update_url': self.get_update_url(),
         })
         return super(TreeAdmin, self).changelist_view(
             request,
@@ -164,50 +288,91 @@ class TreeAdmin(admin.ModelAdmin):
         )
         return reverse(url_name)
 
-    def get_list_display(self, request):
-        list_display = [
-            d for d in super(TreeAdmin, self).get_list_display(request)
-        ]
-        list_display.append('edit_node')
-        return list_display
+    def get_update_url(self):
+        url_name = 'admin:{}_{}_update'.format(
+            self.model._meta.app_label,
+            self.model._meta.model_name
+        )
+        return reverse(url_name)
 
-    def get_list_display_links(self, request, list_display):
-        return ['edit_node']
-
-    def get_queryset(self, request):
-        """
-        Only display nodes for the current node or with depth = 1 (root)
-        """
-        if self._node:
-            qs = self._node.get_children()
+    def update_view(self, request):
+        if not request.is_ajax() or request.method != 'POST':
+            return HttpResponseBadRequest('Not an XMLHttpRequest')
+        if request.method != 'POST':
+            return HttpResponseNotAllowed('Must be a POST request')
+        if not self.has_change_permission(request):
+            return HttpResponseForbidden(
+                'Missing permissions to perform this request'
+            )
+        Form = self.get_update_form_class()
+        form = Form(request.POST)
+        if form.is_valid():
+            data = {'message': 'ok'}
+            pos = form.cleaned_data.get('pos')
+            parent = form.cleaned_data.get('parent')
+            node = form.cleaned_data.get('node')
+            target = form.cleaned_data.get('target')
+            if pos == 'first':
+                if parent:
+                    node.move(parent, pos='first-child')
+                else:
+                    target = node.get_first_root_node()
+                    node.move(target, pos='left')
+            elif pos == 'last':
+                if parent:
+                    node.move(parent, pos='last-child')
+                else:
+                    target = node.get_last_root_node()
+                    node.move(target, pos='right')
+            else:
+                node.move(target, pos=pos)
+            node = self.model.objects.get(pk=node.pk)
+            node.save()
         else:
-            depth = 1
-            qs = super(TreeAdmin, self).get_queryset(request)
-            qs = qs.filter(depth=depth)
-        return qs
+            data = {
+                'message': 'error',
+                'error': _('There seams to be a problem with your list')
+            }
+        return JsonResponse(data)
 
-    def get_node(self, node_id):
-        """
-        Get the current root node
-        """
-        if node_id:
-            qs = self.model._default_manager.get_queryset()
-            try:
-                id = int(node_id)
-            except ValueError:
-                return None
-            try:
-                return qs.get(pk=id)
-            except self.model.DoesNotExist:
-                raise Http404(
-                    '{} with id "{}" does not exist'.format(
-                        self.model._meta.model_name,
-                        id
-                    )
-                )
-        return None
+    def get_update_form_class(self):
+        class UpdateForm(forms.Form):
+            depth = forms.IntegerField()
+            pos = forms.ChoiceField(
+                choices=[
+                    ('left', 'left'),
+                    ('right', 'right'),
+                    ('last', 'last'),
+                    ('first', 'first'),
+                ]
+            )
+            node = forms.ModelChoiceField(
+                queryset=self.model._default_manager.get_queryset()
+            )
+            target = forms.ModelChoiceField(
+                queryset=self.model._default_manager.get_queryset()
+            )
+            parent = forms.ModelChoiceField(
+                required=False,
+                queryset=self.model._default_manager.get_queryset()
+            )
+        return UpdateForm
 
-    def edit_node(self, obj):
+    def col_move_node(self, obj):
+        data_attrs = [
+            'data-pk="{}"'.format(obj.pk),
+            'data-depth="{}"'.format(obj.depth),
+            'data-name="{}"'.format(obj.__str__()),
+        ]
+        if self._node:
+            data_attrs.append('data-parent="{}"'.format(self._node.pk))
+        html = '<span class="admin-addons-drag" {}></span>'.format(
+            ' '.join(data_attrs)
+        )
+        return mark_safe(html)
+    col_move_node.short_description = ''
+
+    def col_edit_node(self, obj):
         css_classes = 'edit icon-button admin-addons-icon-button'
         url_name_edit = 'admin:{}_{}_change'.format(
             self.model._meta.app_label,
@@ -230,4 +395,9 @@ class TreeAdmin(admin.ModelAdmin):
             render_to_string('admin/svg/icon-edit.svg')
         )
         return mark_safe(html)
-    edit_node.short_description = _('Edit')
+    col_edit_node.short_description = _('Edit')
+
+    def col_node_children_count(self, obj):
+        html = '{}'.format(obj.get_children_count())
+        return mark_safe(html)
+    col_node_children_count.short_description = _('Children')

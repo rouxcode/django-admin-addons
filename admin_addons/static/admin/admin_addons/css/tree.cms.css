@@ -1,0 +1,67 @@
+.djangocms-admin-style #changelist table.sortable-tree input,
+.djangocms-admin-style.change-list #changelist table tbody input[type="checkbox"] {
+    vertical-align: middle;
+}
+
+.djangocms-admin-style #changelist table.sortable-tree th,
+.djangocms-admin-style #changelist table.sortable-tree td {
+    vertical-align: middle !important;
+}
+
+.djangocms-admin-style .admin-addons-tree-list-tools {
+    margin-bottom: 10px;
+}
+
+.djangocms-admin-style .admin-addons-tree-list-path-entry {
+    padding: 10px;
+    font-size: 0;
+    line-height: 0;
+    border: 1px solid #0bf;
+    border-radius: 3px;
+    background-color: #fff;
+}
+.djangocms-admin-style .admin-addons-tree-list-path-entry.now {
+    border: 1px solid #d0d0d0;
+}
+
+.djangocms-admin-style .admin-addons-tree-list-path-label span,
+.djangocms-admin-style .admin-addons-tree-list-path-entry span {
+    display: block;
+    font-size: 14px;
+    line-height: 14px;
+}
+
+.djangocms-admin-style .admin-addons-tree-list-path-label span {
+    margin-right: 10px;
+}
+
+.djangocms-admin-style .admin-addons-tree-list-path-entry:after {
+    display: none;
+}
+
+.djangocms-admin-style .admin-addons-tree-list-path-entry.root span {
+    display: none;
+}
+
+.djangocms-admin-style .admin-addons-tree-list-path-entry.root:after {
+    display: block;
+    font-size: 14px;
+    line-height: 14px;
+}
+
+.djangocms-admin-style .admin-addons-path-button {
+    padding: 7px;
+    font-size: 0;
+    line-height: 0;
+    border: 1px solid #999;
+    border-radius: 3px;
+    background-color: #fff;
+}
+
+.djangocms-admin-style .admin-addons-path-button span {
+    display: block;
+    width: 20px;
+    height: 20px;
+    font-size: 14px;
+    line-height: 14px;
+}

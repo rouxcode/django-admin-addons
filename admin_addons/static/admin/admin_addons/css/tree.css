@@ -1,3 +1,12 @@
+.sortable-tree th,
+.sortable-tree td {
+    vertical-align: middle;
+}
+
+#changelist table.sortable-tree input {
+    vertical-align: middle;
+}
+
 .admin-addons-tree-list-tools {
     overflow: auto;
 }
@@ -12,6 +21,7 @@
     float: left;
     padding: 5px 10px;
     font-size: 12px;
+    line-height: 14px;
 }
 
 .admin-addons-tree-list-path-label {
@@ -25,6 +35,7 @@
     box-sizing: border-box;
     vertical-align: middle;
     padding: 5px 0;
+    line-height: 14px;
 }
 
 .admin-addons-tree-list-path-label span,
@@ -32,8 +43,13 @@
     display: inline-block;
     box-sizing: border-box;
     vertical-align: middle;
+    font-size: 12px;
+    line-height: 14px;
 }
 
+.admin-addons-tree-list-path-entry.root {
+    padding: 5px;
+}
 
 .admin-addons-tree-list-path-entry.root span {
     display: none;
@@ -51,15 +67,54 @@
     float: right;
     padding: 5px 10px;
     font-size: 12px;
+    line-height: 12px;
 }
 
-.column-edit_node,
-.field-edit_node {
-    width: 60px;
-    text-align: right;
-}
-
-.field-edit_node a {
+.admin-addons-path-button {
     display: inline-block;
-    padding:
+    vertical-align: middle;
+    box-sizing: border-box;
+}
+
+.admin-addons-path-button.inactive {
+    opacity: 0.25;
+    cursor: default;
+}
+
+.column-col_move_node,
+.field-col_move_node {
+    position: relative;
+    width: 10px;
+    text-align: center;
+}
+
+.admin-addons-drag {
+    position: absolute;
+    left: 8px;
+    top: 8px;
+    right: 8px;
+    bottom: 8px;
+    display: inline-block;
+    box-sizing: border-box;
+    width: auto;
+    height: auto;
+    background-image: url(../imgs/drag.svg);
+    background-repeat: repeat;
+    background-size: 5px 5px;
+    cursor: move;
+}
+
+.column-col_node_children_count,
+.field-col_node_children_count {
+    text-align: right !important;
+}
+
+.column-col_edit_node,
+.field-col_edit_node {
+    width: 60px;
+    text-align: center !important;
+}
+
+.field-col_edit_node a {
+    display: inline-block;
 }

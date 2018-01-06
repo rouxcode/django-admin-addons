@@ -6,6 +6,7 @@ from django.conf.urls import url
 from django.contrib import admin
 from django.contrib.admin.utils import quote
 from django.contrib.admin.views.main import ChangeList
+from django.db.models.query import QuerySet
 from django.forms.models import modelform_factory
 from django.http import (
     Http404,
@@ -45,6 +46,8 @@ class TreeAdminForm(forms.ModelForm):
         self.declared_fields['tree_parent_id'].choices = choices
         self.declared_fields['tree_parent_id'].widget = forms.HiddenInput()
         super(TreeAdminForm, self).__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields['tree_position'].widget = forms.HiddenInput()
 
     def get_parent_choices(self):
         objects = self._meta.model._default_manager
@@ -55,7 +58,7 @@ class TreeAdminForm(forms.ModelForm):
 
     def _clean_cleaned_data(self):
         """ delete auxilary fields not belonging to node model """
-        parent_id = self.cleaned_data.get('tree_parent_id', 0)
+        parent_id = self.cleaned_data.get('tree_parent_id', None)
         try:
             del self.cleaned_data['tree_parent_id']
         except KeyError:
@@ -69,9 +72,41 @@ class TreeAdminForm(forms.ModelForm):
 
         return parent_id, position
 
+    def _get_parent(self, pk=None):
+        if not pk:
+            return None
+        model = self._meta.model
+        try:
+            parent = self._meta.model.objects.get(pk=pk)
+        except model.DoesNotExist:
+            return None
+        return parent
+
+    def _get_creation_data(self):
+        data = {}
+        for field in self.cleaned_data:
+            if not isinstance(self.cleaned_data[field], (list, QuerySet)):
+                data[field] = self.cleaned_data[field]
+        return data
+
     def save(self, commit=True):
-        parend_id, postion = self._clean_cleaned_data()
-        print 'husch'
+        parent_id, position = self._clean_cleaned_data()
+        parent = self._get_parent(pk=parent_id)
+        if self.instance.pk is None:
+            data = self._get_creation_data()
+            if parent:
+                self.instance = parent.add_child(**data)
+                self.instance.move(parent, pos=position)
+            else:
+                self.instance = self._meta.model.add_root(**data)
+                if position == 'first-child':
+                    self.instance.move(parent, pos=position)
+        else:
+            self.instance.save()
+        # Reload the instance
+        self.instance = self._meta.model.objects.get(pk=self.instance.pk)
+        super(TreeAdminForm, self).save(commit=commit)
+        return self.instance
 
 
 def movenodeform_factory(model, form=TreeAdminForm, exclude=None, **kwargs):
@@ -166,10 +201,12 @@ class TreeAdmin(admin.ModelAdmin):
         return urls
 
     def get_list_display(self, request):
-        list_display = ['col_move_node'] + [
+        list_display = ['col_position_node'] + [
             d for d in super(TreeAdmin, self).get_list_display(request)
         ]
         list_display.append('col_node_children_count')
+        # TODO implement move ajax
+        # list_display.append('col_move_node')
         list_display.append('col_edit_node')
         return list_display
 
@@ -186,8 +223,6 @@ class TreeAdmin(admin.ModelAdmin):
             depth = 1
             qs = super(TreeAdmin, self).get_queryset(request)
             qs = qs.filter(depth=depth)
-        for n in qs:
-            print n, n.path
         return qs
 
     def get_changeform_initial_data(self, request):
@@ -358,7 +393,7 @@ class TreeAdmin(admin.ModelAdmin):
             )
         return UpdateForm
 
-    def col_move_node(self, obj):
+    def col_position_node(self, obj):
         data_attrs = [
             'data-pk="{}"'.format(obj.pk),
             'data-depth="{}"'.format(obj.depth),
@@ -370,10 +405,25 @@ class TreeAdmin(admin.ModelAdmin):
             ' '.join(data_attrs)
         )
         return mark_safe(html)
-    col_move_node.short_description = ''
+    col_position_node.short_description = ''
+
+    def col_move_node(self, obj):
+        css_classes = 'icon-button admin-addons-icon-button place'
+        data_attrs = [
+            'data-pk="{}"'.format(obj.pk),
+            'data-depth="{}"'.format(obj.depth),
+            'data-name="{}"'.format(obj.__str__()),
+        ]
+        html = '<span class="{}" {}>{}</span>'.format(
+            css_classes,
+            ' '.join(data_attrs),
+            render_to_string('admin/svg/icon-move.svg')
+        )
+        return mark_safe(html)
+    col_move_node.short_description = _('Move')
 
     def col_edit_node(self, obj):
-        css_classes = 'edit icon-button admin-addons-icon-button'
+        css_classes = 'icon-button admin-addons-icon-button edit'
         url_name_edit = 'admin:{}_{}_change'.format(
             self.model._meta.app_label,
             self.model._meta.model_name
@@ -401,3 +451,7 @@ class TreeAdmin(admin.ModelAdmin):
         html = '{}'.format(obj.get_children_count())
         return mark_safe(html)
     col_node_children_count.short_description = _('Children')
+
+
+class TreeAdminWithSideTree(TreeAdmin):
+    pass

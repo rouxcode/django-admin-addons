@@ -81,8 +81,8 @@
     cursor: default;
 }
 
-.column-col_move_node,
-.field-col_move_node {
+.column-col_position_node,
+.field-col_position_node {
     position: relative;
     width: 10px;
     text-align: center;
@@ -110,11 +110,14 @@
 }
 
 .column-col_edit_node,
-.field-col_edit_node {
+.field-col_edit_node,
+.column-col_move_node,
+.field-col_move_node {
     width: 60px;
     text-align: center !important;
 }
 
-.field-col_edit_node a {
+.field-col_edit_node a,
+.field-col_move_node a {
     display: inline-block;
 }

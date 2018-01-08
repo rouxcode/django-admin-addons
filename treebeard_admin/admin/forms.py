@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 from django import forms
 from django.db.models.query import QuerySet
 from django.forms.models import modelform_factory
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 
 from treebeard.forms import _get_exclude_for_model
@@ -11,8 +13,8 @@ from treebeard.forms import _get_exclude_for_model
 class TreeAdminForm(forms.ModelForm):
 
     _position_choices = (
-        ('last-child', _('At the end')),
-        ('first-child', _('At the top')),
+        ('last-child', _('At the top')),
+        ('first-child', _('At the Bottom')),
     )
     tree_position = forms.ChoiceField(
         choices=_position_choices,
@@ -26,19 +28,22 @@ class TreeAdminForm(forms.ModelForm):
     )
 
     def __init__(self, *args, **kwargs):
-        choices = self.get_parent_choices()
+        instance = kwargs.get('instance')
+        choices = self.mk_dropdown_tree(
+            self._meta.model,
+            for_node=kwargs.get('instance', None)
+        )
         self.declared_fields['tree_parent_id'].choices = choices
-        self.declared_fields['tree_parent_id'].widget = forms.HiddenInput()
+        if instance:
+            self.declared_fields['tree_position'].widget = forms.HiddenInput()
+            parent = instance.get_parent()
+            if parent:
+                label = '{}{}'.format(self.mk_indent(parent.depth), parent)
+                initial = (parent.pk, label)
+                self.declared_fields['tree_parent_id'].initial = initial
+        else:
+            self.declared_fields['tree_parent_id'].widget = forms.HiddenInput()
         super(TreeAdminForm, self).__init__(*args, **kwargs)
-        if self.instance.pk:
-            self.fields['tree_position'].widget = forms.HiddenInput()
-
-    def get_parent_choices(self):
-        objects = self._meta.model._default_manager
-        return [
-            [p['pk'], p['pk']]
-            for p in objects.get_queryset().values('pk')
-        ]
 
     def _clean_cleaned_data(self):
         """ delete auxilary fields not belonging to node model """
@@ -86,11 +91,48 @@ class TreeAdminForm(forms.ModelForm):
                 if position == 'first-child':
                     self.instance.move(parent, pos=position)
         else:
+            print parent_id, self.instance.get_parent()
             self.instance.save()
         # Reload the instance
         self.instance = self._meta.model.objects.get(pk=self.instance.pk)
         super(TreeAdminForm, self).save(commit=commit)
         return self.instance
+
+    @staticmethod
+    def is_loop_safe(for_node, possible_parent):
+        if for_node is not None:
+            return not (
+                possible_parent == for_node
+            ) or (
+                possible_parent.is_descendant_of(for_node)
+            )
+        return True
+
+    @staticmethod
+    def mk_indent(level):
+        return '&nbsp;&nbsp;&nbsp;&nbsp;' * (level - 1)
+
+    @classmethod
+    def add_subtree(cls, for_node, node, options):
+        """
+        Recursively build options tree.
+        """
+        if cls.is_loop_safe(for_node, node):
+            options.append(
+                (node.pk,
+                 mark_safe(cls.mk_indent(node.get_depth()) + escape(node))))
+            for subnode in node.get_children():
+                cls.add_subtree(for_node, subnode, options)
+
+    @classmethod
+    def mk_dropdown_tree(cls, model, for_node=None):
+        """
+        Creates a tree-like list of choices
+        """
+        options = [(0, _('-- root --'))]
+        for node in model.get_root_nodes():
+            cls.add_subtree(for_node, node, options)
+        return options
 
 
 def movenodeform_factory(model, form=TreeAdminForm, exclude=None, **kwargs):

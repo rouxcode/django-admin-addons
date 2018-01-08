@@ -1,15 +1,20 @@
 from __future__ import unicode_literals
 
 import json
+try:
+    from urllib.parse import quote as urlquote
+except ImportError:
+    from django.utils.http import urlquote
 
 from django import forms
 from django.conf import settings
 from django.conf.urls import url
 from django.contrib import admin, messages
-from django.contrib.admin.options import IS_POPUP_VAR
+from django.contrib.admin.options import IS_POPUP_VAR, TO_FIELD_VAR
 from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
 from django.contrib.admin.utils import quote
 from django.contrib.admin.views.main import ChangeList
+from django.utils.html import format_html
 from django.http import (
     Http404,
     HttpResponseBadRequest,
@@ -173,31 +178,19 @@ class TreeAdmin(admin.ModelAdmin):
         self._node = self.get_node(node_id)
         extra_context = extra_context or {}
         extra_context.update({'parent_node': self._node})
-        if not form_url and node_id:
-            opts = self.model._meta
-            form_url = reverse(
-                'admin:{}_{}_add'.format(opts.app_label, opts.model_name),
-                kwargs={'node_id': node_id},
-                current_app=self.admin_site.name
-            )
         return super(TreeAdmin, self).add_view(
             request,
-            form_url,
-            extra_context
+            form_url=form_url or self.get_add_url(),
+            extra_context=extra_context
         )
 
     def response_add(self, request, obj, post_url_continue=None):
         if not post_url_continue and self._node:
-            opts = self.model._meta
-            post_url_continue = reverse(
-                'admin:{}_{}_change'.format(opts.app_label, opts.model_name),
-                kwargs={'object_id': obj.id, 'node_id': self._node.pk},
-                current_app=self.admin_site.name
-            )
+            post_url_continue = self.get_change_url(obj.id)
         return super(TreeAdmin, self).response_add(
             request,
             obj,
-            post_url_continue
+            post_url_continue=post_url_continue
         )
 
     def response_post_save_add(self, request, obj):
@@ -205,21 +198,12 @@ class TreeAdmin(admin.ModelAdmin):
         Figure out where to redirect after the 'Save' button has been pressed
         when adding a new object.
         """
-        print '0huiiiiiiiii'
         opts = self.model._meta
         if self.has_change_permission(request, None):
-            post_url = reverse(
-                'admin:{}_{}_changelist'.format(
-                    opts.app_label,
-                    opts.model_name
-                ),
-                kwargs={'node_id': self._node.pk if self._node.pk else None},
-                current_app=self.admin_site.name
-            )
             preserved_filters = self.get_preserved_filters(request)
             post_url = add_preserved_filters(
                 {'preserved_filters': preserved_filters, 'opts': opts},
-                post_url
+                self.get_changelist_url()
             )
         else:
             post_url = reverse('admin:index', current_app=self.admin_site.name)
@@ -230,35 +214,116 @@ class TreeAdmin(admin.ModelAdmin):
         self._node = self.get_node(node_id)
         extra_context = extra_context or {}
         extra_context.update({'parent_node': self._node})
-        if not form_url and self._node:
-            opts = self.model._meta
-            form_url = reverse(
-                'admin:{}_{}_change'.format(opts.app_label, opts.model_name),
-                kwargs={'object_id': object_id, 'node_id': self._node.pk},
-                current_app=self.admin_site.name
-            )
         return super(TreeAdmin, self).change_view(
             request,
             object_id,
-            form_url,
-            extra_context
+            form_url=form_url or self.get_change_url(object_id),
+            extra_context=extra_context
         )
+
+    def response_change(self, request, obj):
+        """
+        Determine the HttpResponse for the change_view stage.
+        """
+
+        if IS_POPUP_VAR in request.POST:
+            opts = obj._meta
+            to_field = request.POST.get(TO_FIELD_VAR)
+            attr = str(to_field) if to_field else opts.pk.attname
+            value = request.resolver_match.kwargs['object_id']
+            new_value = obj.serializable_value(attr)
+            popup_response_data = json.dumps({
+                'action': 'change',
+                'value': str(value),
+                'obj': str(obj),
+                'new_value': str(new_value),
+            })
+            return TemplateResponse(
+                request,
+                self.popup_response_template or [
+                    'admin/{}/{}/popup_response.html'.format(
+                        opts.app_label,
+                        opts.model_name
+                    ),
+                    'admin/{}/popup_response.html'.format(opts.app_label),
+                    'admin/popup_response.html',
+                ],
+                {'popup_response_data': popup_response_data})
+
+        opts = self.model._meta
+        preserved_filters = self.get_preserved_filters(request)
+
+        msg_dict = {
+            'name': opts.verbose_name,
+            'obj': format_html(
+                '<a href="{}">{}</a>',
+                urlquote(request.path),
+                obj
+            ),
+        }
+        if "_continue" in request.POST:
+            msg = format_html(
+                _(
+                    'The {name} "{obj}" was changed successfully.'
+                    'You may edit it again below.'
+                ),
+                **msg_dict
+            )
+            self.message_user(request, msg, messages.SUCCESS)
+            redirect_url = request.path
+            redirect_url = add_preserved_filters(
+                {'preserved_filters': preserved_filters, 'opts': opts},
+                redirect_url
+            )
+            return HttpResponseRedirect(redirect_url)
+
+        elif "_saveasnew" in request.POST:
+            msg = format_html(
+                _(
+                    'The {name} "{obj}" was added successfully.'
+                    'You may edit it again below.'
+                ),
+                **msg_dict
+            )
+            self.message_user(request, msg, messages.SUCCESS)
+            redirect_url = self.get_change_url(obj.pk)
+            redirect_url = add_preserved_filters(
+                {'preserved_filters': preserved_filters, 'opts': opts},
+                redirect_url
+            )
+            return HttpResponseRedirect(redirect_url)
+
+        elif "_addanother" in request.POST:
+            msg = format_html(
+                _(
+                    'The {name} "{obj}" was changed successfully.'
+                    'You may add another {name} below.'
+                ),
+                **msg_dict
+            )
+            self.message_user(request, msg, messages.SUCCESS)
+            redirect_url = self.get_add_url()
+            redirect_url = add_preserved_filters(
+                {'preserved_filters': preserved_filters, 'opts': opts},
+                redirect_url
+            )
+            return HttpResponseRedirect(redirect_url)
+
+        else:
+            msg = format_html(
+                _('The {name} "{obj}" was changed successfully.'),
+                **msg_dict
+            )
+            self.message_user(request, msg, messages.SUCCESS)
+        return self.response_post_save_change(request, obj)
 
     def response_post_save_change(self, request, obj):
         opts = self.model._meta
         if self.has_change_permission(request, None):
-            post_url = reverse(
-                'admin:{}_{}_changelist'.format(
-                    opts.app_label,
-                    opts.model_name
-                ),
-                kwargs={'node_id': self._node.pk if self._node.pk else None},
-                current_app=self.admin_site.name
-            )
             preserved_filters = self.get_preserved_filters(request)
             post_url = add_preserved_filters(
                 {'preserved_filters': preserved_filters, 'opts': opts},
-                post_url
+                self.get_changelist_url()
             )
         else:
             post_url = reverse('admin:index', current_app=self.admin_site.name)
@@ -301,31 +366,17 @@ class TreeAdmin(admin.ModelAdmin):
                     'popup_response_data': popup_response_data,
                 }
             )
-
-        self.message_user(
-            request,
-            _('The %(name)s "%(obj)s" was deleted successfully.') % {
-                'name': opts.verbose_name,
-                'obj': obj_display,
-            },
-            messages.SUCCESS,
-        )
+        msg = _('The %(name)s "%(obj)s" was deleted successfully.') % {
+            'name': opts.verbose_name,
+            'obj': obj_display,
+        },
+        self.message_user(request, msg, messages.SUCCESS)
 
         if self.has_change_permission(request, None):
-            url_name = 'admin:{}_{}_changelist'.format(
-                opts.app_label,
-                opts.model_name
-            )
-            post_url = reverse(
-                url_name,
-                kwargs={'node_id': self._node.pk if self._node else None},
-                current_app=self.admin_site.name,
-            )
-
             preserved_filters = self.get_preserved_filters(request)
             post_url = add_preserved_filters(
                 {'preserved_filters': preserved_filters, 'opts': opts},
-                post_url
+                self.get_changelist_url()
             )
         else:
             post_url = reverse('admin:index', current_app=self.admin_site.name)
@@ -359,24 +410,49 @@ class TreeAdmin(admin.ModelAdmin):
         return TreeChangeList
 
     def get_add_url(self):
-        if self._node:
-            url_name = 'admin:{}_{}_add'.format(
-                self.model._meta.app_label,
-                self.model._meta.model_name
-            )
-            return reverse(url_name, kwargs={'node_id': self._node.id})
-        url_name = 'admin:{}_{}_add'.format(
-            self.model._meta.app_label,
-            self.model._meta.model_name
+        kwargs = {'node_id': self._node.id} if self._node else None
+        info = [self.model._meta.app_label, self.model._meta.model_name]
+        return reverse(
+            'admin:{}_{}_add'.format(*info),
+            kwargs=kwargs,
+            current_app=self.admin_site.name
         )
-        return reverse(url_name)
+
+    def get_change_url(self, object_id):
+        kwargs = None
+        args = None
+        if self._node:
+            kwargs = {'object_id': object_id, 'node_id': self._node.pk}
+        else:
+            args = [object_id]
+        info = [self.model._meta.app_label, self.model._meta.model_name]
+        return reverse(
+            'admin:{}_{}_change'.format(*info),
+            args=args,
+            kwargs=kwargs,
+            current_app=self.admin_site.name
+        )
+
+    def get_changelist_url(self, object_id=None):
+        kwargs = None
+        if object_id:
+            kwargs = {'node_id': object_id}
+        elif self._node:
+            kwargs = {'node_id': self._node.pk}
+        info = [self.model._meta.app_label, self.model._meta.model_name]
+        url = reverse(
+            'admin:{}_{}_changelist'.format(*info),
+            kwargs=kwargs,
+            current_app=self.admin_site.name
+        )
+        return url
 
     def get_update_url(self):
-        url_name = 'admin:{}_{}_update'.format(
-            self.model._meta.app_label,
-            self.model._meta.model_name
+        info = [self.model._meta.app_label, self.model._meta.model_name]
+        return reverse(
+            'admin:{}_{}_update'.format(*info),
+            current_app=self.admin_site.name
         )
-        return reverse(url_name)
 
     def update_view(self, request):
         if not request.is_ajax() or request.method != 'POST':
@@ -499,26 +575,9 @@ class TreeAdmin(admin.ModelAdmin):
     col_delete_node.short_description = _('Delete')
 
     def col_edit_node(self, obj):
-        info = [self.model._meta.app_label, self.model._meta.model_name]
         css_classes = 'icon-button treebeard-admin-icon-button edit'
-        if self._node:
-            url_edit = reverse(
-                'admin:{}_{}_change'.format(*info),
-                kwargs={'object_id': obj.pk, 'node_id': self._node.pk},
-                current_app=self.admin_site.name
-            )
-        else:
-            url_edit = reverse(
-                'admin:{}_{}_change'.format(*info),
-                args=[obj.pk],
-                current_app=self.admin_site.name
-            )
-        url_list = reverse(
-            'admin:{}_{}_changelist'.format(*info),
-            kwargs={'node_id': obj.pk},
-            current_app=self.admin_site.name
-        )
-
+        url_edit = self.get_change_url(obj.id)
+        url_list = self.get_changelist_url(obj.id)
         data_attrs = [
             'data-id="{}"'.format(obj.id),
             'data-edit-url="{}"'.format(url_edit),

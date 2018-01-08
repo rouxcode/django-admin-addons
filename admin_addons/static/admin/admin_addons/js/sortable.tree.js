@@ -46,7 +46,18 @@ var SortableTree = ( function( $ ) {
             parent: item.$drag.data( 'parent' )
         };
         item.$.addClass( draggable_class );
+
+        item.$edit = $( 'a:first', item.$ );
+        item.$edit_col = item.$edit.parent();
+        item.$edit_col[0]._url = item.$edit.attr( 'href' );
+        item.$edit_col.addClass( 'field-col_select_node' );
+        item.$edit_col.on( 'click', edit_item );
+
         return item;
+    };
+
+    function edit_item( e ) {
+        window.location = this._url;
     };
 
     function set_item_index( i ) {

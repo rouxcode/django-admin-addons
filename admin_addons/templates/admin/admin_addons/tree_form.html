@@ -1,0 +1,32 @@
+{% extends 'admin/change_form.html' %}
+
+{% load i18n admin_urls admin_list %}
+
+{% if not is_popup %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; {% if has_change_permission %}<a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>{% else %}{{ opts.verbose_name_plural|capfirst }}{% endif %}
+    {% if parent_node %}
+        {% for node in parent_node.get_ancestors %}
+            &rsaquo; <a href="{% url opts|admin_urlname:'changelist' node.pk %}">{{ node|capfirst }}</a>
+        {% endfor %}
+        &rsaquo; <a href="{% url opts|admin_urlname:'changelist' parent_node.pk %}">{{ parent_node|capfirst }}</a>
+    {% endif %}
+    &rsaquo; {% if add %}{% blocktrans with name=opts.verbose_name %}Add {{ name }}{% endblocktrans %}{% else %}{{ original|truncatewords:"18" }}{% endif %}
+</div>
+{% endblock %}
+{% endif %}
+
+{% block object-tools-items %}
+<li>
+    {% if parent_node %}
+        {% url opts|admin_urlname:'history'  parent_node.pk|admin_urlquote original.pk|admin_urlquote as history_url %}
+    {% else %}
+        {% url opts|admin_urlname:'history' original.pk|admin_urlquote as history_url %}
+    {% endif %}
+    <a href="{% add_preserved_filters history_url %}" class="historylink">{% trans "History" %}</a>
+</li>
+{% if has_absolute_url %}<li><a href="{{ absolute_url }}" class="viewsitelink">{% trans "View on site" %}</a></li>{% endif %}
+{% endblock %}

@@ -145,6 +145,8 @@ class TreeAdmin(admin.ModelAdmin):
     # TODO implement max depth
     max_depth = None
     change_list_template = 'admin/admin_addons/tree_list.html'
+    change_form_template = 'admin/admin_addons/tree_form.html'
+    object_history_template = 'admin/admin_addons/tree_history.html'
 
     class Media:
         css = {
@@ -159,42 +161,44 @@ class TreeAdmin(admin.ModelAdmin):
         ]
 
     def get_urls(self):
+        info = [
+            self.model._meta.app_label,
+            self.model._meta.model_name,
+        ]
         urls = [
 
             # Ajax Views
             url(
                 r'^update/$',
                 self.admin_site.admin_view(self.update_view),
-                name='{}_{}_update'.format(
-                    self.model._meta.app_label,
-                    self.model._meta.model_name
-                )
+                name='{}_{}_update'.format(*info)
             ),
 
             # Template Views
             url(
                 r'^(?P<node_id>\d+)/list/$',
                 self.admin_site.admin_view(self.changelist_view),
-                name='{}_{}_changelist'.format(
-                    self.model._meta.app_label,
-                    self.model._meta.model_name
-                )
+                name='{}_{}_changelist'.format(*info)
             ),
             url(
                 r'^(?P<node_id>\d+)/add/$',
                 self.admin_site.admin_view(self.add_view),
-                name='{}_{}_add'.format(
-                    self.model._meta.app_label,
-                    self.model._meta.model_name
-                )
+                name='{}_{}_add'.format(*info)
             ),
             url(
                 r'^(?P<node_id>\d+)/(?P<object_id>\d+)/change/$',
                 self.admin_site.admin_view(self.change_view),
-                name='{}_{}_change'.format(
-                    self.model._meta.app_label,
-                    self.model._meta.model_name
-                )
+                name='{}_{}_change'.format(*info)
+            ),
+            url(
+                r'^(?P<node_id>\d+)/(?P<object_id>\d+)/change/$',
+                self.admin_site.admin_view(self.delete_view),
+                name='{}_{}_delete'.format(*info)
+            ),
+            url(
+                r'^(?P<node_id>\d+)/(?P<object_id>\d+)/history/$',
+                self.admin_site.admin_view(self.history_view),
+                name='{}_{}_history'.format(*info)
             ),
         ]
         urls += super(TreeAdmin, self).get_urls()
@@ -293,6 +297,28 @@ class TreeAdmin(admin.ModelAdmin):
             url = reverse(url_name, kwargs={'node_id': self._node.id})
             return HttpResponseRedirect(url)
         return super(TreeAdmin, self).response_post_save_change(request, obj)
+
+    def delete_view(self, request, object_id, node_id=None,
+                    extra_context=None):
+        self._node = self.get_node(node_id)
+        extra_context = extra_context or {}
+        extra_context.update({'parent_node': self._node})
+        return super(TreeAdmin, self).delete_view(
+            request,
+            object_id,
+            extra_context=None
+        )
+
+    def history_view(self, request, object_id, node_id=None,
+                     extra_context=None):
+        self._node = self.get_node(node_id)
+        extra_context = extra_context or {}
+        extra_context.update({'parent_node': self._node})
+        return super(TreeAdmin, self).history_view(
+            request,
+            object_id,
+            extra_context
+        )
 
     def changelist_view(self, request, node_id=None, extra_context=None):
         self._node = self.get_node(node_id)

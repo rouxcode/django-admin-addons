@@ -3,6 +3,16 @@
     vertical-align: middle;
 }
 
+.sortable-tree td span,
+.sortable-tree th span {
+    display: block;
+}
+
+.sortable-tree td svg,
+.sortable-tree th svg {
+    display: block;
+}
+
 #changelist table.sortable-tree input {
     vertical-align: middle;
 }
@@ -81,6 +91,10 @@
     cursor: default;
 }
 
+.field-col_select_node {
+    cursor: pointer;
+}
+
 .column-col_position_node,
 .field-col_position_node {
     position: relative;
@@ -106,6 +120,7 @@
 
 .column-col_node_children_count,
 .field-col_node_children_count {
+    width: 120px;
     text-align: right !important;
 }
 

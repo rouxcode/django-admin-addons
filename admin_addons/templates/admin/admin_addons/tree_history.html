@@ -1,0 +1,22 @@
+{% extends 'admin/object_history.html' %}
+
+{% load i18n admin_urls admin_list %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ module_name }}</a>
+    {% if parent_node %}
+        {% for node in parent_node.get_ancestors %}
+            &rsaquo; <a href="{% url opts|admin_urlname:'changelist' node.pk %}">{{ node|capfirst }}</a>
+        {% endfor %}
+        &rsaquo; <a href="{% url opts|admin_urlname:'changelist' parent_node.pk %}">{{ parent_node|capfirst }}</a>
+        {% url opts|admin_urlname:'change' parent_node.pk|admin_urlquote object.pk|admin_urlquote as change_url %}
+    {% else %}
+        {% url opts|admin_urlname:'change' object.pk|admin_urlquote as change_url %}
+    {% endif %}
+    &rsaquo; <a href="{{ change_url }}">{{ object|truncatewords:"18" }}</a>
+    &rsaquo; {% trans 'History' %}
+</div>
+{% endblock %}

@@ -49,6 +49,13 @@
     line-height: 14px;
 }
 
+.djangocms-admin-style .admin-addons-drag {
+    left: 8px;
+    top: 9px;
+    right: 8px;
+    bottom: 9px;
+}
+
 .djangocms-admin-style .admin-addons-path-button {
     padding: 7px;
     font-size: 0;

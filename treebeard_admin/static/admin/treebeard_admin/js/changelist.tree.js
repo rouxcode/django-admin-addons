@@ -17,7 +17,7 @@ var ChangeListTree = ( function( $ ) {
 
     function init_row() {
         var $this = $( this );
-        this.$icon = $( '.admin-addons-icon-button', $this );
+        this.$icon = $( '.treebeard-admin-icon-button', $this );
         this.$open_col = $( '.field-__str__', $this );
         this.$open_col.html(
             '<a href="' + this.$icon.data('list-url') + '">' + this.$open_col.html() + '</a>'

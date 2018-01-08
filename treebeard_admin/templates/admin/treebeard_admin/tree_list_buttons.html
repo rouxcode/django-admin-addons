@@ -1,0 +1,13 @@
+<div class="treebeard-admin-tree-list-buttons">{% load admin_urls %}
+    {% if parent_node %}
+        {% with ancestor=parent_node.get_parent %}
+            {% if ancestor %}
+                <a class="treebeard-admin-path-button" href="{% url opts|admin_urlname:'changelist' ancestor.pk %}"><span>{% include 'admin/svg/icon-level-up.svg' %}</span></a>
+            {% else %}
+                <a class="treebeard-admin-path-button" href="{% url opts|admin_urlname:'changelist' %}"><span>{% include 'admin/svg/icon-level-up.svg' %}</span></a>
+            {% endif %}
+        {% endwith %}
+    {% else %}
+        <a class="treebeard-admin-path-button inactive"><span>{% include 'admin/svg/icon-level-up.svg' %}</span></a>
+    {% endif %}
+</div>

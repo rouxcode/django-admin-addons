@@ -43,9 +43,9 @@
 
 {% block result_list %}
     {% if action_form and actions_on_top and cl.show_admin_actions %}{% admin_actions %}{% endif %}
-    <div class="admin-addons-tree-list-tools">
-        {% include 'admin/admin_addons/tree_list_path.html' %}
-        {% include 'admin/admin_addons/tree_list_buttons.html' %}
+    <div class="treebeard-admin-tree-list-tools">
+        {% include 'admin/treebeard_admin/tree_list_path.html' %}
+        {% include 'admin/treebeard_admin/tree_list_buttons.html' %}
     </div>
     {% result_list cl %}
     {% if action_form and actions_on_bottom and cl.show_admin_actions %}{% admin_actions %}{% endif %}

@@ -10,7 +10,7 @@ var SortableTree = ( function( $ ) {
     var $items;
     var $wrap;
 
-    var handle_class = 'admin-addons-drag';
+    var handle_class = 'treebeard-admin-drag';
     var draggable_class = 'draggable-item';
     var $doc = $( document );
 

@@ -1,0 +1,12 @@
+<div class="treebeard-admin-tree-list-path">{% load i18n admin_urls %}
+    <div class="treebeard-admin-tree-list-path-label"><span>{% trans 'Path:' %}</span></div>
+    {% if parent_node %}
+        <a class="treebeard-admin-tree-list-path-entry root" href="{% url opts|admin_urlname:'changelist' %}"><span>{% trans 'Root' %}</span></a>
+        {% for node in parent_node.get_ancestors %}
+            <a class="treebeard-admin-tree-list-path-entry" href="{% url opts|admin_urlname:'changelist' node.pk %}"><span>{{ node|capfirst }}</span></a>
+        {% endfor %}
+        <div class="treebeard-admin-tree-list-path-entry now"><span>{{ parent_node|capfirst }}</span></div>
+    {% else %}
+        <div class="treebeard-admin-tree-list-path-entry root now"><span>{% trans 'Root' %}</span></div>
+    {% endif %}
+</div>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from setuptools import setup, find_packages
-from admin_sort import __version__
+from treebeard_admin import __version__
 
 try:
     from pypandoc import convert
@@ -11,7 +11,7 @@ except ImportError:
             return fd.read()
 
 
-DESCRIPTION = 'Django admin addons'
+DESCRIPTION = 'Django TreeBeard Admin'
 
 CLASSIFIERS = [
     'Environment :: Web Environment',
@@ -26,13 +26,13 @@ CLASSIFIERS = [
 
 
 setup(
-    name='django-admin-styles',
+    name='django-treebeard-admin',
     version=__version__,
     author='Alaric Mägerle',
     author_email='info@rouxcode.ch',
     description=DESCRIPTION,
     long_description=convert('README.md', 'rst'),
-    url='https://github.com/rouxcode/django-admin-addons',
+    url='https://github.com/rouxcode/django-treebeard-admin',
     license='MIT',
     keywords=['django'],
     platforms=['OS Independent'],

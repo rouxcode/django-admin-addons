@@ -149,21 +149,21 @@ class TreeAdmin(admin.ModelAdmin):
 
     actions = None
     max_depth = None  # TODO implement max depth
-    change_list_template = 'admin/admin_addons/tree_list.html'
-    change_form_template = 'admin/admin_addons/tree_form.html'
-    delete_confirmation_template = 'admin/admin_addons/tree_delete.html'
-    object_history_template = 'admin/admin_addons/tree_history.html'
+    change_list_template = 'admin/treebeard_admin/tree_list.html'
+    change_form_template = 'admin/treebeard_admin/tree_form.html'
+    delete_confirmation_template = 'admin/treebeard_admin/tree_delete.html'
+    object_history_template = 'admin/treebeard_admin/tree_history.html'
 
     class Media:
         css = {
-            'all': ['admin/admin_addons/css/tree.css']
+            'all': ['admin/treebeard_admin/css/tree.css']
         }
         if 'djangocms_admin_style' in settings.INSTALLED_APPS:
-            css['all'].append('admin/admin_addons/css/tree.cms.css')
+            css['all'].append('admin/treebeard_admin/css/tree.cms.css')
         js = [
-            'admin/admin_addons/js/changelist.tree.js',
-            'admin/admin_addons/js/sortable.js',
-            'admin/admin_addons/js/sortable.tree.js',
+            'admin/treebeard_admin/js/changelist.tree.js',
+            'admin/treebeard_admin/js/sortable.js',
+            'admin/treebeard_admin/js/sortable.tree.js',
         ]
 
     def get_urls(self):
@@ -543,14 +543,14 @@ class TreeAdmin(admin.ModelAdmin):
         ]
         if self._node:
             data_attrs.append('data-parent="{}"'.format(self._node.pk))
-        html = '<span class="admin-addons-drag" {}></span>'.format(
+        html = '<span class="treebeard-admin-drag" {}></span>'.format(
             ' '.join(data_attrs)
         )
         return mark_safe(html)
     col_position_node.short_description = ''
 
     def col_move_node(self, obj):
-        css_classes = 'icon-button admin-addons-icon-button place'
+        css_classes = 'icon-button treebeard-admin-icon-button place'
         data_attrs = [
             'data-pk="{}"'.format(obj.pk),
             'data-depth="{}"'.format(obj.depth),
@@ -566,7 +566,7 @@ class TreeAdmin(admin.ModelAdmin):
 
     def col_delete_node(self, obj):
         info = [self.model._meta.app_label, self.model._meta.model_name]
-        css_classes = 'icon-button admin-addons-icon-button delete'
+        css_classes = 'icon-button treebeard-admin-icon-button delete'
         if self._node:
             delete_url = reverse(
                 'admin:{}_{}_delete'.format(*info),
@@ -594,7 +594,7 @@ class TreeAdmin(admin.ModelAdmin):
 
     def col_edit_node(self, obj):
         info = [self.model._meta.app_label, self.model._meta.model_name]
-        css_classes = 'icon-button admin-addons-icon-button edit'
+        css_classes = 'icon-button treebeard-admin-icon-button edit'
         if self._node:
             url_edit = reverse(
                 'admin:{}_{}_change'.format(*info),

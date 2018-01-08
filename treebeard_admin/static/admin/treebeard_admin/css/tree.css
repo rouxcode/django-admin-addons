@@ -17,30 +17,30 @@
     vertical-align: middle;
 }
 
-.admin-addons-tree-list-tools {
+.treebeard-admin-tree-list-tools {
     overflow: auto;
 }
 
-.admin-addons-tree-list-tools:after {
+.treebeard-admin-tree-list-tools:after {
     content: '';
     display: block;
     clear: both;
 }
 
-.admin-addons-tree-list-path {
+.treebeard-admin-tree-list-path {
     float: left;
     padding: 5px 10px;
     font-size: 12px;
     line-height: 14px;
 }
 
-.admin-addons-tree-list-path-label {
+.treebeard-admin-tree-list-path-label {
     font-weight: bold;
     text-transform: uppercase;
 }
 
-.admin-addons-tree-list-path-label,
-.admin-addons-tree-list-path-entry {
+.treebeard-admin-tree-list-path-label,
+.treebeard-admin-tree-list-path-entry {
     display: inline-block;
     box-sizing: border-box;
     vertical-align: middle;
@@ -48,8 +48,8 @@
     line-height: 14px;
 }
 
-.admin-addons-tree-list-path-label span,
-.admin-addons-tree-list-path-entry span {
+.treebeard-admin-tree-list-path-label span,
+.treebeard-admin-tree-list-path-entry span {
     display: inline-block;
     box-sizing: border-box;
     vertical-align: middle;
@@ -57,15 +57,15 @@
     line-height: 14px;
 }
 
-.admin-addons-tree-list-path-entry.root {
+.treebeard-admin-tree-list-path-entry.root {
     padding: 5px;
 }
 
-.admin-addons-tree-list-path-entry.root span {
+.treebeard-admin-tree-list-path-entry.root span {
     display: none;
 }
 
-.admin-addons-tree-list-path-entry:after {
+.treebeard-admin-tree-list-path-entry:after {
     content: '/';
     display: inline-block;
     vertical-align: middle;
@@ -73,20 +73,20 @@
     font-weight: bold;
 }
 
-.admin-addons-tree-list-buttons {
+.treebeard-admin-tree-list-buttons {
     float: right;
     padding: 5px 10px;
     font-size: 12px;
     line-height: 12px;
 }
 
-.admin-addons-path-button {
+.treebeard-admin-path-button {
     display: inline-block;
     vertical-align: middle;
     box-sizing: border-box;
 }
 
-.admin-addons-path-button.inactive {
+.treebeard-admin-path-button.inactive {
     opacity: 0.25;
     cursor: default;
 }
@@ -102,7 +102,7 @@
     text-align: center;
 }
 
-.admin-addons-drag {
+.treebeard-admin-drag {
     position: absolute;
     left: 8px;
     top: 8px;

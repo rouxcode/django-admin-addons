@@ -124,6 +124,8 @@
     text-align: right !important;
 }
 
+.column-col_delete_node,
+.field-col_delete_node,
 .column-col_edit_node,
 .field-col_edit_node,
 .column-col_move_node,
@@ -132,6 +134,7 @@
     text-align: center !important;
 }
 
+.field-col_delete_node a,
 .field-col_edit_node a,
 .field-col_move_node a {
     display: inline-block;

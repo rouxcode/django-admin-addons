@@ -9,7 +9,24 @@
 }
 
 .djangocms-admin-style .admin-addons-tree-list-tools {
-    margin-bottom: 10px;
+    z-index: 2;
+    position: relative;
+    overflow: visible;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    background-color: #fff;
+    box-shadow: 0 0 5px 0 rgba(0,0,0,.2) !important;
+}
+
+.djangocms-admin-style .admin-addons-tree-list-tools::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -5px;
+    display: block;
+    height: 4px;
+    width: 100%;
+    background-color: #fff;
 }
 
 .djangocms-admin-style .admin-addons-tree-list-path-entry {

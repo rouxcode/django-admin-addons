@@ -2,7 +2,11 @@
 <div class="submit-row">
     {% if show_save %}<input type="submit" value="{% trans 'Save' %}" class="default" name="_save" />{% endif %}
     {% if show_delete_link %}
-        {% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}
+        {% if parent_node %}
+            {% url opts|admin_urlname:'delete' parent_node.pk|admin_urlquote original.pk|admin_urlquote as delete_url %}
+        {% else %}
+            {% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}
+        {% endif %}
         <p class="deletelink-box"><a href="{% add_preserved_filters delete_url %}" class="deletelink">{% trans "Delete" %}</a></p>
     {% endif %}
     {% if show_save_as_new %}<input type="submit" value="{% trans 'Save as new' %}" name="_saveasnew" />{% endif %}

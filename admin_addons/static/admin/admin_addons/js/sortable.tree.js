@@ -25,8 +25,6 @@ var SortableTree = ( function( $ ) {
             $items = $( '.row1, .row2', $wrap ).each( init_item );
             sortable = new Sortable( wrap, {
                 draggable: "." + draggable_class,
-                // forceFallback: false,
-                // fallbackTolerance: 5,
                 handle: '.' + handle_class,
                 ghostClass: "sortable-ghost",
                 chosenClass: "sortable-chosen",

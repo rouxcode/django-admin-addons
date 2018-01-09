@@ -13,52 +13,47 @@ from treebeard.forms import _get_exclude_for_model
 class TreeAdminForm(forms.ModelForm):
 
     _position_choices = (
-        ('last-child', _('At the top')),
-        ('first-child', _('At the Bottom')),
+        ('last-child', _('At the bottom')),
+        ('first-child', _('At the top')),
     )
-    tree_position = forms.ChoiceField(
+
+    _parent_id = forms.TypedChoiceField(
+        coerce=int,
+        label=_('Parent node'),
+    )
+    _position = forms.ChoiceField(
         choices=_position_choices,
         initial=_position_choices[0][0],
         label=_('Position'),
     )
-    tree_parent_id = forms.TypedChoiceField(
-        required=False,
-        coerce=int,
-        label=_('Parent node'),
-    )
 
     def __init__(self, *args, **kwargs):
         instance = kwargs.get('instance')
-        choices = self.mk_dropdown_tree(
+        self.declared_fields['_parent_id'].choices = self.mk_dropdown_tree(
             self._meta.model,
             for_node=kwargs.get('instance', None)
         )
-        self.declared_fields['tree_parent_id'].choices = choices
         if instance:
-            self.declared_fields['tree_position'].widget = forms.HiddenInput()
             parent = instance.get_parent()
             if parent:
-                label = '{}{}'.format(self.mk_indent(parent.depth), parent)
-                initial = (parent.pk, label)
-                self.declared_fields['tree_parent_id'].initial = initial
-        else:
-            self.declared_fields['tree_parent_id'].widget = forms.HiddenInput()
+                self.declared_fields['_parent_id'].initial = parent.pk
         super(TreeAdminForm, self).__init__(*args, **kwargs)
 
     def _clean_cleaned_data(self):
-        """ delete auxilary fields not belonging to node model """
-        parent_id = self.cleaned_data.get('tree_parent_id', None)
+        """
+        delete auxilary fields not belonging to node model
+        """
+        parent_id = self.cleaned_data.get('_parent_id', None)
         try:
-            del self.cleaned_data['tree_parent_id']
+            del self.cleaned_data['_parent_id']
         except KeyError:
             pass
         default = self._position_choices[0][0]
-        position = self.cleaned_data.get('tree_position', default)
+        position = self.cleaned_data.get('_position', default)
         try:
-            del self.cleaned_data['tree_position']
+            del self.cleaned_data['_position']
         except KeyError:
             pass
-
         return parent_id, position
 
     def _get_parent(self, pk=None):
@@ -80,9 +75,9 @@ class TreeAdminForm(forms.ModelForm):
 
     def save(self, commit=True):
         parent_id, position = self._clean_cleaned_data()
-        parent = self._get_parent(pk=parent_id)
         if self.instance.pk is None:
             data = self._get_creation_data()
+            parent = self._get_parent(pk=parent_id)
             if parent:
                 self.instance = parent.add_child(**data)
                 self.instance.move(parent, pos=position)
@@ -91,8 +86,12 @@ class TreeAdminForm(forms.ModelForm):
                 if position == 'first-child':
                     self.instance.move(parent, pos=position)
         else:
-            print parent_id, self.instance.get_parent()
+            parent = self.instance.get_parent()
             self.instance.save()
+            # If the parent_id changed move the node to the new parent
+            if not parent_id == parent.pk:
+                new_parent = self._meta.model.objects.get(pk=parent_id)
+                self.instance.move(new_parent, position)
         # Reload the instance
         self.instance = self._meta.model.objects.get(pk=self.instance.pk)
         super(TreeAdminForm, self).save(commit=commit)

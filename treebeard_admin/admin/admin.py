@@ -150,7 +150,7 @@ class TreeAdmin(admin.ModelAdmin):
     def get_changeform_initial_data(self, request):
         data = super(TreeAdmin, self).get_changeform_initial_data(request)
         if self._node:
-            data['tree_parent_id'] = self._node.id
+            data['_parent_id'] = self._node.id
         return data
 
     def get_node(self, node_id):
@@ -186,7 +186,7 @@ class TreeAdmin(admin.ModelAdmin):
 
     def response_add(self, request, obj, post_url_continue=None):
         if not post_url_continue and self._node:
-            post_url_continue = self.get_change_url(obj.id)
+            post_url_continue = self.get_change_url(instance=obj)
         return super(TreeAdmin, self).response_add(
             request,
             obj,
@@ -217,7 +217,7 @@ class TreeAdmin(admin.ModelAdmin):
         return super(TreeAdmin, self).change_view(
             request,
             object_id,
-            form_url=form_url or self.get_change_url(object_id),
+            form_url=form_url,
             extra_context=extra_context
         )
 
@@ -270,7 +270,7 @@ class TreeAdmin(admin.ModelAdmin):
                 **msg_dict
             )
             self.message_user(request, msg, messages.SUCCESS)
-            redirect_url = request.path
+            redirect_url = self.get_change_url(instance=obj)
             redirect_url = add_preserved_filters(
                 {'preserved_filters': preserved_filters, 'opts': opts},
                 redirect_url
@@ -286,7 +286,7 @@ class TreeAdmin(admin.ModelAdmin):
                 **msg_dict
             )
             self.message_user(request, msg, messages.SUCCESS)
-            redirect_url = self.get_change_url(obj.pk)
+            redirect_url = self.get_change_url(instance=obj)
             redirect_url = add_preserved_filters(
                 {'preserved_filters': preserved_filters, 'opts': opts},
                 redirect_url
@@ -409,8 +409,19 @@ class TreeAdmin(admin.ModelAdmin):
     def get_changelist(self, request, **kwargs):
         return TreeChangeList
 
-    def get_add_url(self):
-        kwargs = {'node_id': self._node.id} if self._node else None
+    def get_add_url(self, object_id=None, instance=None):
+        # TODO this method needs proper error logging
+        # if there is a reference obj (object_id, instance) use it to get
+        # the parent node else check if there the path provides a parent
+        if object_id and not instance:
+            instance = self.model._default_manager.get(pk=object_id)
+        if instance:
+            parent = instance.get_parent()
+            kwargs = {'node_id': parent.pk}
+        elif self._node:
+            kwargs = {'node_id': self._node.pk}
+        else:
+            kwargs = None
         info = [self.model._meta.app_label, self.model._meta.model_name]
         return reverse(
             'admin:{}_{}_add'.format(*info),
@@ -418,12 +429,19 @@ class TreeAdmin(admin.ModelAdmin):
             current_app=self.admin_site.name
         )
 
-    def get_change_url(self, object_id):
-        kwargs = None
-        args = None
-        if self._node:
-            kwargs = {'object_id': object_id, 'node_id': self._node.pk}
+    def get_change_url(self, object_id=None, instance=None):
+        # TODO this method needs proper error logging
+        # get the parent from the given obj (object_id, instance)
+        parent = None
+        if object_id and not instance:
+            instance = self.model._default_manager.get(pk=object_id)
+        if instance:
+            parent = instance.get_parent()
+        if parent:
+            args = None
+            kwargs = {'object_id': instance.pk, 'node_id': parent.pk}
         else:
+            kwargs = None
             args = [object_id]
         info = [self.model._meta.app_label, self.model._meta.model_name]
         return reverse(
@@ -576,7 +594,7 @@ class TreeAdmin(admin.ModelAdmin):
 
     def col_edit_node(self, obj):
         css_classes = 'icon-button treebeard-admin-icon-button edit'
-        url_edit = self.get_change_url(obj.id)
+        url_edit = self.get_change_url(instance=obj)
         url_list = self.get_changelist_url(obj.id)
         data_attrs = [
             'data-id="{}"'.format(obj.id),

@@ -26,8 +26,8 @@ var SortableTree = ( function( $ ) {
             sortable = new Sortable( wrap, {
                 draggable: "." + draggable_class,
                 handle: '.' + handle_class,
-                ghostClass: "sortable-ghost",
-                chosenClass: "sortable-chosen",
+                ghostClass: "treebeard-admin-ghost",
+                chosenClass: "treebeard-admin-chosen",
                 onUpdate: update
             } );
         }
@@ -60,7 +60,9 @@ var SortableTree = ( function( $ ) {
 
     function set_item_index( i ) {
         this._opts.index = i;
-        return this
+        this.$.removeClass( 'row1 row2' );
+        this.$.addClass( i % 2 == 0 ? 'row1' : 'row2' );
+        return this;
     };
 
     function update( e ) {

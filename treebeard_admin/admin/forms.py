@@ -40,6 +40,8 @@ class TreeAdminForm(forms.ModelForm):
             parent = instance.get_parent()
             if parent:
                 self.declared_fields['_parent_id'].initial = parent.pk
+            else:
+                self.declared_fields['_parent_id'].initial = 0
         super(TreeAdminForm, self).__init__(*args, **kwargs)
 
     def _clean_cleaned_data(self):
@@ -52,7 +54,8 @@ class TreeAdminForm(forms.ModelForm):
         except KeyError:
             pass
         default = self._position_choices[0][0]
-        position = self.cleaned_data.get('_position', default)
+        position = self.cleaned_data.get('_position') or default
+        print 'get pos', position
         try:
             del self.cleaned_data['_position']
         except KeyError:
@@ -93,8 +96,13 @@ class TreeAdminForm(forms.ModelForm):
             self.instance.save()
             # If the parent_id changed move the node to the new parent
             if not parent_id == getattr(parent, 'pk', 0):
-                new_parent = self._meta.model.objects.get(pk=parent_id)
+                try:
+                    new_parent = self._meta.model.objects.get(pk=parent_id)
+                except self._meta.model.DoesNotExist:
+                    new_parent = self._meta.model.get_last_root_node()
+                    position = 'right'
                 self.instance.move(new_parent, position)
+
         # Reload the instance
         self.instance = self._meta.model.objects.get(pk=self.instance.pk)
         super(TreeAdminForm, self).save(commit=commit)

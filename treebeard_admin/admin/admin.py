@@ -12,8 +12,6 @@ from django.conf.urls import url
 from django.contrib import admin, messages
 from django.contrib.admin.options import IS_POPUP_VAR, TO_FIELD_VAR
 from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
-from django.contrib.admin.utils import quote
-from django.contrib.admin.views.main import ChangeList
 from django.utils.html import format_html
 from django.http import (
     Http404,
@@ -28,30 +26,6 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.html import mark_safe
 from django.utils.translation import ugettext_lazy as _
-
-
-class TreeChangeList(ChangeList):
-
-    def url_for_result(self, result):
-        pk = getattr(result, self.pk_attname)
-        parent = result.get_parent()
-        if parent:
-            url_name = 'admin:{}_{}_change'.format(
-                self.opts.app_label,
-                self.opts.model_name
-            )
-            try:
-                return reverse(
-                    url_name,
-                    kwargs={
-                        'node_id': quote(parent.id),
-                        'object_id': quote(pk),
-                    },
-                    current_app=self.model_admin.admin_site.name
-                )
-            except Exception:
-                pass
-        return super(TreeChangeList, self).url_for_result(result)
 
 
 class TreeAdmin(admin.ModelAdmin):
@@ -102,11 +76,11 @@ class TreeAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.add_view),
                 name='{}_{}_add'.format(*info)
             ),
-            url(
-                r'^(?P<node_id>\d+)/(?P<object_id>\d+)/change/$',
-                self.admin_site.admin_view(self.change_view),
-                name='{}_{}_change'.format(*info)
-            ),
+            # url(
+            #     r'^(?P<node_id>\d+)/(?P<object_id>\d+)/change/$',
+            #     self.admin_site.admin_view(self.change_view),
+            #     name='{}_{}_change'.format(*info)
+            # ),
             url(
                 r'^(?P<node_id>\d+)/(?P<object_id>\d+)/delete/$',
                 self.admin_site.admin_view(self.delete_view),
@@ -120,10 +94,6 @@ class TreeAdmin(admin.ModelAdmin):
         ]
         urls += super(TreeAdmin, self).get_urls()
         return urls
-
-    def get_form(self, request, obj=None, **kwargs):
-        form = super(TreeAdmin, self).get_form(request, obj, **kwargs)
-        return form
 
     def get_list_display(self, request):
         list_display = ['col_position_node'] + [
@@ -139,10 +109,12 @@ class TreeAdmin(admin.ModelAdmin):
     def get_list_display_links(self, request, list_display):
         return None
 
-    def get_queryset(self, request):
+    def get_queryset(self, request, fallback=False):
         """
         Only display nodes for the current node or with depth = 1 (root)
         """
+        if fallback:
+            return super(TreeAdmin, self).get_queryset(request)
         if self._node:
             qs = self._node.get_children()
         else:
@@ -150,6 +122,21 @@ class TreeAdmin(admin.ModelAdmin):
             qs = super(TreeAdmin, self).get_queryset(request)
             qs = qs.filter(depth=depth)
         return qs
+
+    def get_object(self, request, object_id, from_field=None):
+        """
+        Returns an instance matching the field and value provided, the primary
+        key is used if no field is provided. Returns ``None`` if no match is
+        found or the object_id fails validation.
+        """
+        obj = super(TreeAdmin, self).get_object(request, object_id, from_field)
+        if obj is None:
+            try:
+                qs = self.get_queryset(request, fallback=True)
+                obj = qs.get(pk=object_id)
+            except self.model.DoesNotExist:
+                obj = None
+        return obj
 
     def get_changeform_initial_data(self, request):
         data = super(TreeAdmin, self).get_changeform_initial_data(request)
@@ -213,9 +200,10 @@ class TreeAdmin(admin.ModelAdmin):
             post_url = reverse('admin:index', current_app=self.admin_site.name)
         return HttpResponseRedirect(post_url)
 
-    def change_view(self, request, object_id, node_id=None, form_url='',
-                    extra_context=None):
-        self._node = self.get_node(node_id)
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        obj = self.get_object(request, object_id)
+        if obj:
+            self._node = obj.get_parent()
         extra_context = extra_context or {}
         extra_context.update({'parent_node': self._node})
         return super(TreeAdmin, self).change_view(
@@ -411,9 +399,6 @@ class TreeAdmin(admin.ModelAdmin):
             extra_context,
         )
 
-    def get_changelist(self, request, **kwargs):
-        return TreeChangeList
-
     def get_add_url(self, object_id=None, instance=None):
         # TODO this method needs proper error logging
         # if there is a reference obj (object_id, instance) use it to get
@@ -449,6 +434,8 @@ class TreeAdmin(admin.ModelAdmin):
         else:
             kwargs = None
             args = [instance.pk]
+        kwargs = None
+        args = [instance.pk]
         return reverse(
             'admin:{}_{}_change'.format(opts.app_label, opts.model_name),
             args=args,

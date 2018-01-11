@@ -92,7 +92,7 @@ class TreeAdminForm(forms.ModelForm):
             parent = self.instance.get_parent()
             self.instance.save()
             # If the parent_id changed move the node to the new parent
-            if not parent_id == getattr(parent, 'pk', None):
+            if not parent_id == getattr(parent, 'pk', 0):
                 new_parent = self._meta.model.objects.get(pk=parent_id)
                 self.instance.move(new_parent, position)
         # Reload the instance

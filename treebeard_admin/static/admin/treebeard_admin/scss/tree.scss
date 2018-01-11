@@ -17,14 +17,21 @@
     vertical-align: middle;
 }
 
+
 .treebeard-admin-tree-list-tools {
     overflow: auto;
+
+    &:after {
+        content: '';
+        display: block;
+        clear: both;
+    }
 }
 
-.treebeard-admin-tree-list-tools:after {
-    content: '';
-    display: block;
-    clear: both;
+#changelist.filtered {
+    .treebeard-admin-tree-list-tools {
+        margin-right: 280px;
+    }
 }
 
 .treebeard-admin-tree-list-path {
@@ -126,7 +133,7 @@
 .column-col_node_children_count,
 .field-col_node_children_count {
     width: 120px;
-    text-align: right !important;
+    text-align: center !important;
 }
 
 .column-col_delete_node,

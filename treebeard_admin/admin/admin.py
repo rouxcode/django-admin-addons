@@ -59,7 +59,7 @@ class TreeAdmin(admin.ModelAdmin):
     _node = None
 
     actions = None
-    max_depth = None  # TODO implement max depth
+    max_depth = None  # TODO implement that the max_depth gets to the form
     change_list_template = 'admin/treebeard_admin/tree_list.html'
     change_form_template = 'admin/treebeard_admin/tree_form.html'
     delete_confirmation_template = 'admin/treebeard_admin/tree_delete.html'
@@ -72,7 +72,7 @@ class TreeAdmin(admin.ModelAdmin):
         if 'djangocms_admin_style' in settings.INSTALLED_APPS:
             css['all'].append('admin/treebeard_admin/css/tree.cms.css')
         js = [
-            'admin/treebeard_admin/js/changelist.tree.js',
+            # 'admin/treebeard_admin/js/changelist.tree.js',
             'admin/treebeard_admin/js/sortable.js',
             'admin/treebeard_admin/js/sortable.tree.js',
         ]
@@ -121,6 +121,10 @@ class TreeAdmin(admin.ModelAdmin):
         urls += super(TreeAdmin, self).get_urls()
         return urls
 
+    def get_form(self, request, obj=None, **kwargs):
+        form = super(TreeAdmin, self).get_form(request, obj, **kwargs)
+        return form
+
     def get_list_display(self, request):
         list_display = ['col_position_node'] + [
             d for d in super(TreeAdmin, self).get_list_display(request)
@@ -133,7 +137,7 @@ class TreeAdmin(admin.ModelAdmin):
         return list_display
 
     def get_list_display_links(self, request, list_display):
-        return []
+        return None
 
     def get_queryset(self, request):
         """
@@ -400,6 +404,7 @@ class TreeAdmin(admin.ModelAdmin):
             'parent_node': self._node,
             'add_url': self.get_add_url(),
             'update_url': self.get_update_url(),
+            'max_depth': self.max_depth or 0,
         })
         return super(TreeAdmin, self).changelist_view(
             request,
@@ -433,6 +438,7 @@ class TreeAdmin(admin.ModelAdmin):
         # TODO this method needs proper error logging
         # get the parent from the given obj (object_id, instance)
         parent = None
+        opts = self.model._meta
         if object_id and not instance:
             instance = self.model._default_manager.get(pk=object_id)
         if instance:
@@ -442,10 +448,9 @@ class TreeAdmin(admin.ModelAdmin):
             kwargs = {'object_id': instance.pk, 'node_id': parent.pk}
         else:
             kwargs = None
-            args = [object_id]
-        info = [self.model._meta.app_label, self.model._meta.model_name]
+            args = [instance.pk]
         return reverse(
-            'admin:{}_{}_change'.format(*info),
+            'admin:{}_{}_change'.format(opts.app_label, opts.model_name),
             args=args,
             kwargs=kwargs,
             current_app=self.admin_site.name

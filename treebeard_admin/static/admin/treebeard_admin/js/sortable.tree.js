@@ -3,6 +3,7 @@ var SortableTree = ( function( $ ) {
 
     var csrftoken;
     var current_page;
+    var max_depth;
     var sortable;
     var total_pages;
     var update_url;
@@ -37,6 +38,8 @@ var SortableTree = ( function( $ ) {
         var item = this;
         item.$ = $( this );
         item.$drag = $( '.' + handle_class, item.$ );
+        item.$icon = $( '.treebeard-admin-icon-button', item.$ );
+        item.$open_col = $( '.field-__str__', item.$ );
         item._opts = {
             index: i,
             pk: item.$drag.data( 'pk' ),
@@ -45,17 +48,14 @@ var SortableTree = ( function( $ ) {
         };
         item.$.addClass( draggable_class );
 
-        item.$edit = $( 'a:first', item.$ );
-        item.$edit_col = item.$edit.parent();
-        item.$edit_col[0]._url = item.$edit.attr( 'href' );
-        item.$edit_col.addClass( 'field-col_select_node' );
-        item.$edit_col.on( 'click', edit_item );
-
+        if( max_depth == 0 || item._opts.depth <= max_depth  ) {
+            item.$open_col.html(
+                '<a href="' + item.$icon.data('list-url') + '">'
+                + item.$open_col.html()
+                + '</a>'
+            );
+        }
         return item;
-    };
-
-    function edit_item( e ) {
-        window.location = this._url;
     };
 
     function set_item_index( i ) {
@@ -120,6 +120,7 @@ var SortableTree = ( function( $ ) {
         current_page = options.current_page;
         total_pages = options.total_pages;
         update_url = options.update_url;
+        max_depth = options.max_depth || 0;
     };
 
     return {

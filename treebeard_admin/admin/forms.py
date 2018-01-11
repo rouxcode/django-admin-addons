@@ -12,6 +12,8 @@ from treebeard.forms import _get_exclude_for_model
 
 class TreeAdminForm(forms.ModelForm):
 
+    max_depth = None
+
     _position_choices = (
         ('last-child', _('At the bottom')),
         ('first-child', _('At the top')),
@@ -25,6 +27,7 @@ class TreeAdminForm(forms.ModelForm):
         choices=_position_choices,
         initial=_position_choices[0][0],
         label=_('Position'),
+        required=False,
     )
 
     def __init__(self, *args, **kwargs):
@@ -89,7 +92,7 @@ class TreeAdminForm(forms.ModelForm):
             parent = self.instance.get_parent()
             self.instance.save()
             # If the parent_id changed move the node to the new parent
-            if not parent_id == parent.pk:
+            if not parent_id == getattr(parent, 'pk', None):
                 new_parent = self._meta.model.objects.get(pk=parent_id)
                 self.instance.move(new_parent, position)
         # Reload the instance
@@ -116,12 +119,19 @@ class TreeAdminForm(forms.ModelForm):
         """
         Recursively build options tree.
         """
-        if cls.is_loop_safe(for_node, node):
-            options.append(
-                (node.pk,
-                 mark_safe(cls.mk_indent(node.get_depth()) + escape(node))))
-            for subnode in node.get_children():
-                cls.add_subtree(for_node, subnode, options)
+        # If max_depth is set limit the subtree rendering
+        if not cls.max_depth or node.depth <= cls.max_depth:
+            if cls.is_loop_safe(for_node, node):
+                options.append(
+                    (
+                        node.pk,
+                        mark_safe(
+                            cls.mk_indent(node.get_depth()) + escape(node)
+                        )
+                    )
+                )
+                for subnode in node.get_children():
+                    cls.add_subtree(for_node, subnode, options)
 
     @classmethod
     def mk_dropdown_tree(cls, model, for_node=None):

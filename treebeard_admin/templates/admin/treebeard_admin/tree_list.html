@@ -9,7 +9,8 @@
             csrftoken: '{{ csrf_token }}',
             current_page: {{ cl.page_num | add:'1' }},
             total_pages: {{ cl.paginator.num_pages }},
-            update_url: '{{ update_url }}'
+            update_url: '{{ update_url }}',
+            max_depth: {{ max_depth }}
         });
     </script>
 {% endblock %}

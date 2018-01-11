@@ -55,7 +55,6 @@ class TreeAdminForm(forms.ModelForm):
             pass
         default = self._position_choices[0][0]
         position = self.cleaned_data.get('_position') or default
-        print 'get pos', position
         try:
             del self.cleaned_data['_position']
         except KeyError:
